@@ -97,7 +97,7 @@ class TestBluezeroDevice(dbusmock.DBusTestCase):
         pass
 
     def test_rssi(self):
-        self.assertEqual(self.ble_dev.RSSI, -79)
+        self.assertEqual(self.ble_dev.rssi, -79)
 
     def test_txpower(self):
         self.assertEqual(self.ble_dev.tx_power, 0)

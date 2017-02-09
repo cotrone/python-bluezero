@@ -2,6 +2,7 @@
 
 # Standard libraries
 import subprocess
+import re
 
 # D-Bus import
 import dbus
@@ -13,6 +14,7 @@ except ImportError:
 
 # python-bluezero constants import
 from bluezero import constants
+from bluezero import device
 
 dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 mainloop = GObject.MainLoop()
@@ -177,6 +179,20 @@ def find_device_in_objects(objects, device_address, adapter_pattern=None):
             return dbus.Interface(obj, constants.DEVICE_INTERFACE)
 
     raise Exception('Bluetooth device not found')
+
+
+def find_device_from_path(dev_path):
+    dev_obj = None
+    for dev in device.Device._instances:
+        if dev_path in dev.remote_device_path:
+            dev_obj = dev
+    return dev_obj
+
+
+def get_device_id_from_path(dev_path):
+    m = re.search('dev_(\S+)$', dev_path)
+    return m.group(1).replace('_', ':')
+
 
 ##########################
 # GATT Interface functions

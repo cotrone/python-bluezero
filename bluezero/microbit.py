@@ -72,21 +72,22 @@ class Microbit:
         if not self.dongle.powered:
             self.dongle.powered = True
         logger.debug('Adapter powered')
-        logger.debug('Start discovery')
-        self.dongle.nearby_discovery()
-        device_path = None
-        if name is not None:
-            device_path = tools.get_dbus_path(
-                constants.DEVICE_INTERFACE,
-                'Name',
-                name)
-        elif address is not None:
-            device_path = tools.get_dbus_path(
-                constants.DEVICE_INTERFACE,
-                'Address',
-                address)
+        # logger.debug('Start discovery')
+        # self.dongle.nearby_discovery()
+        # device_path = None
+        # if name is not None:
+        #     device_path = tools.get_dbus_path(
+        #         constants.DEVICE_INTERFACE,
+        #         'Name',
+        #         name)
+        # elif address is not None:
+        #     device_path = tools.get_dbus_path(
+        #         constants.DEVICE_INTERFACE,
+        #         'Address',
+        #         address)
 
-        self.ubit = device.Device(device_path[0])
+        # self.ubit = device.Device(device_path[0])
+        self.ubit = None
 
         # dbus paths
         self.accel_srv_path = None
@@ -295,6 +296,18 @@ class Microbit:
 
         self.pin_pwm_iface = tools.get_dbus_iface(constants.GATT_CHRC_IFACE,
                                                   pin_pwm_obj)
+
+    def get_found_microbits(self):
+        ubits_found = []
+        for device_obj in device.Device._instances:
+            if 'micro:bit' in device_obj.alias:
+                ubits_found.append(device_obj.alias)
+        return ubits_found
+
+    def get_ubit_obj(self, full_name):
+        for device_obj in device.Device._instances:
+            if full_name in device_obj.alias:
+                return device_obj.remote_device_path
 
     @property
     def connected(self):

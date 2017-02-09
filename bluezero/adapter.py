@@ -16,7 +16,9 @@ import dbus
 import dbus.mainloop.glib
 
 # python-bluezero imports
+from bluezero import tools
 from bluezero import constants
+from bluezero import device
 
 # Main eventloop import
 try:
@@ -59,18 +61,51 @@ def list_adapters():
 
 
 def interfaces_added(path, interfaces):
+    # logger.debug('interface added keys: {}'.format(interfaces.keys()))
+    props = []
+    for interface in interfaces:
+        logger.debug('{} added path {}'.format(interface, path))
+        # logger.debug('Interfaces: {}'.format(interface))
+        if constants.DEVICE_INTERFACE in interface:
+            device_obj = device.Device(path)
+            for prop in interfaces[interface]:
+                logger.debug('\t{} added {} = {}'.format(
+                    interface,
+                    prop,
+                    interfaces[interface][prop]))
+            if Adapter.on_device_added is not None:
+                for key in interfaces[interface].keys():
+                    props.append(device.Device.prop_map[key])
+                Adapter.on_device_added(device_obj, props)
+
+
+def interfaces_removed(path, interfaces):
+    logging.debug('Interface {} removed {}'.format(interfaces, path))
     if constants.DEVICE_INTERFACE in interfaces:
-        logger.debug('Device added at {}'.format(path))
+        dev_obj = tools.find_device_from_path(path)
+        dev_id = tools.get_device_id_from_path(path)
+        device.Device._instances.remove(dev_obj)
+        Adapter.on_device_removed(dev_id)
 
 
 def properties_changed(interface, changed, invalidated, path):
-    if constants.DEVICE_INTERFACE in interface:
-        for prop in changed:
-            logger.debug(
-                '{}:{} Property {} new value {}'.format(interface,
-                                                        path,
-                                                        prop,
-                                                        changed[prop]))
+    changed_props = []
+    invalidated_props = []
+    logger.debug('Prop changed iface: {}'.format(interface))
+    logger.debug('Prop changed path: {}'.format(path))
+    device_obj = tools.find_device_from_path(path)
+    if Adapter.on_device_prop_changed is not None:
+        for key in changed.keys():
+            logger.debug('Prop changed change: {} = {}'.format(key,
+                                                               changed[key]))
+            changed_props.append(device.Device.prop_map[key])
+        Adapter.on_device_prop_changed(device_obj, changed_props)
+    if Adapter.on_device_prop_invalidated is not None:
+        for key in invalidated.keys():
+            logger.debug('Prop changed inval: {} = {}'.format(key,
+                                                              invalidated))
+            invalidated_props.append(device.Device.prop_map[key])
+        Adapter.on_device_prop_invalidated(device_obj, invalidated_props)
 
 
 class AdapterError(Exception):
@@ -90,6 +125,13 @@ class Adapter:
     >>> dongle.powered = True
 
     """
+    on_adapter_added = None
+    on_adapter_removed = None
+    on_adapter_prop_changed = None
+    on_device_added = None
+    on_device_removed = None
+    on_device_prop_changed = None
+    on_device_prop_invalidated = None
 
     def __init__(self, adapter_path):
         """Default initialiser.
@@ -119,6 +161,10 @@ class Adapter:
         self.bus.add_signal_receiver(interfaces_added,
                                      dbus_interface=constants.DBUS_OM_IFACE,
                                      signal_name='InterfacesAdded')
+
+        self.bus.add_signal_receiver(interfaces_removed,
+                                     dbus_interface=constants.DBUS_OM_IFACE,
+                                     signal_name="InterfacesRemoved")
 
         self.bus.add_signal_receiver(properties_changed,
                                      dbus_interface=dbus.PROPERTIES_IFACE,
@@ -235,13 +281,20 @@ class Adapter:
         return True
 
     def nearby_discovery(self, timeout=10):
-        """Start discovery of nearby Bluetooth devices."""
+        """
+        Run discovery of nearby Bluetooth devices for a
+        specified time period.
+        """
         self._nearby_timeout = timeout
         self._nearby_count = 0
 
         GObject.timeout_add(1000, self._discovering_timeout)
         self.adapter_methods.StartDiscovery()
         self.mainloop.run()
+
+    def start_discovery(self):
+        """Start scanning of nearby Bluetooth devices."""
+        self.adapter_methods.StartDiscovery()
 
     def stop_discovery(self):
         """Stop scanning of nearby Bluetooth devices."""

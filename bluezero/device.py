@@ -35,6 +35,28 @@ class Device:
     This class instantiates an object that interacts with a remote
     Bluetooth device via the D-Bus.
     """
+    _instances = []
+
+    prop_map = {'Address': 'address',
+                'Name': 'name',
+                'Icon': 'icon',
+                'Class': 'bt_class',
+                'Appearance': 'appearance',
+                'UUIDs': 'uuids',
+                'Paired': 'paired',
+                'Connected': 'connected',
+                'Trusted': 'trusted',
+                'Blocked': 'blocked',
+                'Alias': 'alias',
+                'Adapter': 'adapter',
+                'LegacyPairing': 'legacy_pairing',
+                'Modalias': 'modalias',
+                'RSSI': 'rssi',
+                'TxPower': 'tx_power',
+                'ManufacturerData': 'manufacturer_data',
+                'ServiceData': 'service_data',
+                'ServicesResolved': 'services_resolved',
+                'AdvertisingFlags': 'advertising_flags'}
 
     def __init__(self, device_path):
         """Default initialiser.
@@ -44,6 +66,8 @@ class Device:
 
         :param device_path: DBus path to the remote Bluetooth device.
         """
+        Device._instances.append(self)
+
         self.bus = dbus.SystemBus()
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         self.mainloop = GObject.MainLoop()
@@ -192,7 +216,7 @@ class Device:
             constants.DEVICE_INTERFACE, 'Modalias')
 
     @property
-    def RSSI(self):
+    def rssi(self):
         """
         Received Signal Strength Indicator of the remote device.
 
@@ -235,6 +259,13 @@ class Device:
         return self.remote_device_props.Get(
             constants.DEVICE_INTERFACE,
             'ServicesResolved')
+
+    @property
+    def advertising_flags(self):
+        """The Advertising Data Flags of the remote device"""
+        return self.remote_device_props.Get(
+            constants.DEVICE_INTERFACE,
+            'AdvertisingFlags')
 
     def connect(self, address=None, profile=None):
         """
